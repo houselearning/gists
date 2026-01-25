@@ -295,7 +295,7 @@ function subscribeMyUploads(uid) {
         await forkBlob(docSnap.id, b);
       });
       li.querySelector(".like-btn").addEventListener("click", async (ev) => {
-        await toggleLike(docSnap.id);
+        await toggleLike(blobId);
       });
       li.querySelector(".share-btn").addEventListener("click", async () => {
   await shareBlob(docSnap.id, b.fileName);
