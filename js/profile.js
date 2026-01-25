@@ -337,4 +337,4 @@ function base64ToUint8Array(base64) {
 /* -------------------------
    Utility imports used above
    ------------------------- */
-import { getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+//import { getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
