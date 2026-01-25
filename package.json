@@ -1,0 +1,12 @@
+{
+  "name": "hl-blob-cleanup",
+  "version": "1.0.0",
+  "description": "Cleanup script for HouseLearning Blob (Firestore chunk deletion)",
+  "main": "scripts/cleanup-firestore-chunks.js",
+  "scripts": {
+    "cleanup": "node scripts/cleanup-firestore-chunks.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.0.0"
+  }
+}
