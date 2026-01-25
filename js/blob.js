@@ -30,10 +30,10 @@ import {
   getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
-// TODO: use your existing config
+/*// TODO: use your existing config
 const firebaseConfig = {
   // ...
-};
+};*/
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
