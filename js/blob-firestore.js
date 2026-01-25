@@ -523,16 +523,13 @@ async function forkBlob(sourceBlobId, sourceMeta) {
 }
 
 /** Share: copy a shareable URL to clipboard */
-async function shareBlob(blobId) {
-  const url = `${window.location.origin}${window.location.pathname}?blobId=${encodeURIComponent(blobId)}`;
-  try {
-    await navigator.clipboard.writeText(url);
-    alert("Share link copied to clipboard.");
-  } catch (err) {
-    // fallback: open prompt
-    prompt("Copy this link:", url);
-  }
+async function shareBlob(blobId, fileName) {
+  shareCurrentBlobId = blobId;
+  shareCurrentFileName = fileName;
+
+  shareModal.classList.remove("hidden");
 }
+
 
 /* -------------------------
    Download / reassemble (unchanged)
