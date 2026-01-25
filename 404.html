@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>404 Not Found — HouseLearning</title>
+  <link rel="stylesheet" href="/css/404.css" />
+</head>
+<body>
+  <header class="hl-nav">
+    <div class="hl-nav-left">
+      <a class="hl-logo" href="/">HouseLearning</a>
+      <a href="/docs/forum.html">Forum</a>
+      <a href="/blob.html">Blob</a>
+      <a href="/blog.html">Blog</a>
+    </div>
+    <div class="hl-nav-right">
+      <a href="/" class="hl-btn small">Home</a>
+    </div>
+  </header>
+
+  <main class="notfound-layout">
+    <section class="card notfound-card">
+      <div class="notfound-visual" aria-hidden="true">
+        <div class="blob-404">404</div>
+      </div>
+
+      <div class="notfound-content">
+        <h1>Page not found</h1>
+        <p class="muted">We couldn't find the page you were looking for. It may have been moved, renamed, or never existed.</p>
+
+        <div class="notfound-actions">
+          <a class="hl-btn primary" href="/">Go to Home</a>
+          <button id="searchBtn" class="hl-btn">Search the site</button>
+          <button id="reportBtn" class="hl-btn">Report broken link</button>
+        </div>
+
+        <div class="notfound-suggest">
+          <h3>Popular places</h3>
+          <ul>
+            <li><a href="/docs/forum.html">Forum</a></li>
+            <li><a href="/blob.html">HouseLearning Blob</a></li>
+            <li><a href="/blog.html">Blog</a></li>
+            <li><a href="/profile.html">Your profile</a></li>
+          </ul>
+        </div>
+
+        <div id="reportStatus" class="muted small"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="hl-footer">
+    <a href="/privacy.html">Privacy</a>
+    <span>© HouseLearning</span>
+  </footer>
+
+  <script type="module" src="/js/404.js"></script>
+</body>
+</html>
