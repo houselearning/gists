@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Profile — HouseLearning Blob</title>
+  <link rel="stylesheet" href="/css/profile.css" />
+</head>
+<body>
+  <header class="hl-nav">
+    <div class="hl-nav-left">
+      <a class="hl-logo" href="/">HouseLearning</a>
+      <a href="/docs/forum.html">Forum</a>
+      <a href="/blob.html">Blob</a>
+    </div>
+    <div class="hl-nav-right">
+      <span id="signedInAs">Guest</span>
+      <button id="signInBtn" class="hl-btn">Sign In</button>
+      <button id="signOutBtn" class="hl-btn hidden">Sign Out</button>
+    </div>
+  </header>
+
+  <main class="profile-layout">
+    <aside class="profile-sidebar card">
+      <div class="profile-avatar" id="profileAvatar"></div>
+      <h2 id="profileName">Profile</h2>
+      <div class="profile-meta">
+        <div><strong id="followersCount">0</strong> Followers</div>
+        <div><strong id="ratingStars">0</strong> Rating</div>
+      </div>
+      <button id="followBtn" class="hl-btn primary">Follow</button>
+      <button id="reportBtn" class="hl-btn">Report</button>
+
+      <section class="card small">
+        <h3>My Recent Uploads</h3>
+        <ul id="recentUploads" class="file-list"></ul>
+      </section>
+    </aside>
+
+    <section class="profile-main">
+      <section class="card about-card">
+        <h3>About</h3>
+        <p id="aboutText" class="muted">No bio yet.</p>
+        <div class="profile-actions">
+          <button id="shareProfileBtn" class="hl-btn">Share Profile</button>
+        </div>
+      </section>
+
+      <section class="card uploads-card">
+        <h3 id="uploadsTitle">Uploads</h3>
+        <div id="uploadsList" class="feed-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="hl-footer">
+    <a href="/privacy.html">Privacy</a>
+    <span>© HouseLearning</span>
+  </footer>
+
+  <script type="module" src="/js/profile.js"></script>
+</body>
+</html>
