@@ -1,28 +1,22 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>HouseLearning Blob</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="/favicon.svg" />
   <link rel="stylesheet" href="/css/blob.css" />
 </head>
 <body>
   <header class="hl-nav">
     <div class="hl-nav-left">
-      <a href="/index.html" class="hl-logo">HouseLearning</a>
-      <a href="/index.html">Home</a>
-      <a href="/math.html">Math</a>
-      <a href="/science.html">Science</a>
-      <a href="/cs.html">Computer Science</a>
-      <a href="/blog.html">Blog</a>
+      <a class="hl-logo" href="/">HouseLearning</a>
       <a href="/docs/forum.html">Forum</a>
       <span class="hl-nav-current">Blob</span>
     </div>
     <div class="hl-nav-right">
-      <span id="signedInAs"></span>
-      <button id="signInBtn" class="hl-btn small">Sign In</button>
-      <button id="signOutBtn" class="hl-btn small secondary hidden">Sign Out</button>
+      <span id="signedInAs">Guest</span>
+      <button id="signInBtn" class="hl-btn">Sign In</button>
+      <button id="signOutBtn" class="hl-btn hidden">Sign Out</button>
     </div>
   </header>
 
@@ -42,13 +36,12 @@
     <section class="blob-main">
       <section class="card upload-card">
         <h2>Upload to HouseLearning Blob</h2>
-        <p class="muted">
-          Max <strong>15MB per file</strong>, up to <strong>45MB total</strong> per account.
-        </p>
+        <p class="muted">Max <strong>15MB per file</strong>, up to <strong>45MB total</strong> per account.</p>
+
         <form id="uploadForm">
           <label class="field">
             <span>Title</span>
-            <input type="text" id="blobTitle" required maxlength="120" />
+            <input id="blobTitle" type="text" maxlength="120" />
           </label>
 
           <label class="field">
@@ -61,15 +54,15 @@
 
           <label class="field">
             <span>File</span>
-            <input type="file" id="blobFile" required />
+            <input id="blobFile" type="file" />
           </label>
 
           <div class="upload-meta">
-            <span id="quotaInfo" class="muted"></span>
+            <span id="quotaInfo" class="muted">Sign in to upload.</span>
             <span id="fileSizeInfo" class="muted"></span>
           </div>
 
-          <button type="submit" class="hl-btn primary" id="uploadBtn">Upload</button>
+          <button id="uploadBtn" class="hl-btn primary" type="submit">Upload</button>
           <span id="uploadStatus" class="status"></span>
         </form>
       </section>
@@ -83,11 +76,9 @@
 
   <footer class="hl-footer">
     <a href="/privacy.html">Privacy</a>
-    <a href="/docs/">Documentation</a>
     <span>© HouseLearning</span>
   </footer>
 
-  <!-- Firebase + Blob JS -->
-  <script type="module" src="/js/blob.js"></script>
+  <script type="module" src="/js/blob-firestore.js"></script>
 </body>
 </html>
