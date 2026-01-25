@@ -62,6 +62,14 @@ const uploadStatusEl = document.getElementById("uploadStatus");
 const myUploadsList = document.getElementById("myUploadsList");
 const trendingList = document.getElementById("trendingList");
 const feedList = document.getElementById("feedList");
+const shareModal = document.getElementById("shareModal");
+const shareMail = document.getElementById("shareMail");
+const shareCopy = document.getElementById("shareCopy");
+const shareForum = document.getElementById("shareForum");
+const shareClose = document.getElementById("shareClose");
+
+let shareCurrentBlobId = null;
+let shareCurrentFileName = null;
 
 let currentUser = null;
 let currentUserUsage = 0;
