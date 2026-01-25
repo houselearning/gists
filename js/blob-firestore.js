@@ -1,4 +1,6 @@
-// /js/blob-firestore.js
+// /js/blob-firestore.js (extended with View profile, Fork, Like, Share)
+// Replace firebaseConfig with your project values.
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getAuth,
@@ -22,7 +24,8 @@ import {
   onSnapshot,
   serverTimestamp,
   getDocs,
-  deleteDoc
+  deleteDoc,
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /* CONFIG: replace with your Firebase config */
@@ -45,6 +48,7 @@ const MAX_FILE_BYTES = 15 * 1024 * 1024;
 const MAX_USER_BYTES = 45 * 1024 * 1024;
 const CHUNK_SIZE = 256 * 1024; // 256 KB per chunk
 
+// UI elements
 const signedInAsEl = document.getElementById("signedInAs");
 const signInBtn = document.getElementById("signInBtn");
 const signOutBtn = document.getElementById("signOutBtn");
@@ -237,6 +241,10 @@ function updateQuotaInfo() {
   quotaInfoEl.textContent = `You are using ${usedMB}MB of ${maxMB}MB.`;
 }
 
+/* -------------------------
+   Subscriptions and UI wiring
+   ------------------------- */
+
 function subscribeMyUploads(uid) {
   const q = query(
     collection(db, "blobs"),
@@ -257,6 +265,10 @@ function subscribeMyUploads(uid) {
         <span class="file-meta">${visLabel}</span>
         <button data-id="${docSnap.id}" class="download-btn">Download</button>
         <button data-id="${docSnap.id}" class="delete-btn">Delete</button>
+        <button data-owner="${b.ownerId}" data-action="profile" class="action-btn">View profile</button>
+        <button data-id="${docSnap.id}" class="fork-btn">Fork</button>
+        <button data-id="${docSnap.id}" class="like-btn">Like (${b.likes || 0})</button>
+        <button data-id="${docSnap.id}" class="share-btn">Share</button>
       `;
       myUploadsList.appendChild(li);
 
@@ -266,6 +278,19 @@ function subscribeMyUploads(uid) {
       li.querySelector(".delete-btn").addEventListener("click", async () => {
         if (!confirm("Delete this blob and its chunks? This cannot be undone.")) return;
         await deleteBlobAndChunks(docSnap.id, b);
+      });
+      li.querySelector(".action-btn").addEventListener("click", (ev) => {
+        const owner = ev.target.dataset.owner;
+        viewProfile(owner);
+      });
+      li.querySelector(".fork-btn").addEventListener("click", async () => {
+        await forkBlob(docSnap.id, b);
+      });
+      li.querySelector(".like-btn").addEventListener("click", async (ev) => {
+        await toggleLike(docSnap.id);
+      });
+      li.querySelector(".share-btn").addEventListener("click", async () => {
+        await shareBlob(docSnap.id);
       });
     });
   });
@@ -286,8 +311,12 @@ function subscribeTrending() {
       li.innerHTML = `
         <span class="file-name">${b.fileName}</span>
         <span class="file-meta">${b.views || 0} Views</span>
+        <button data-owner="${b.ownerId}" class="view-profile-small">Profile</button>
+        <button data-id="${docSnap.id}" class="fork-small">Fork</button>
       `;
       trendingList.appendChild(li);
+      li.querySelector(".view-profile-small").addEventListener("click", (ev) => viewProfile(ev.target.dataset.owner));
+      li.querySelector(".fork-small").addEventListener("click", async () => await forkBlob(docSnap.id, b));
     });
   });
 }
@@ -324,13 +353,29 @@ function subscribeFeed() {
           <div class="feed-actions">
             <button data-action="profile" data-owner="${b.ownerId}">view profile</button>
             <button data-action="fork" data-id="${id}">Fork</button>
-            <button data-action="like" data-id="${id}">Like</button>
+            <button data-action="like" data-id="${id}">Like (${b.likes || 0})</button>
             <button data-action="share" data-id="${id}">Share</button>
           </div>
           <div class="feed-snippet">${snippet}</div>
         </div>
       `;
       feedList.appendChild(item);
+
+      // wire actions
+      item.querySelectorAll(".feed-actions button").forEach(btn => {
+        btn.addEventListener("click", async (ev) => {
+          const action = ev.target.dataset.action;
+          if (action === "profile") {
+            viewProfile(ev.target.dataset.owner);
+          } else if (action === "fork") {
+            await forkBlob(ev.target.dataset.id, b);
+          } else if (action === "like") {
+            await toggleLike(ev.target.dataset.id);
+          } else if (action === "share") {
+            await shareBlob(ev.target.dataset.id);
+          }
+        });
+      });
 
       const recoverLink = item.querySelector(".recover-link");
       if (recoverLink) {
@@ -343,6 +388,147 @@ function subscribeFeed() {
   });
 }
 
+/* -------------------------
+   Actions: View profile, Like, Fork, Share
+   ------------------------- */
+
+/** View profile: navigate to profile page */
+function viewProfile(ownerId) {
+  if (!ownerId) return;
+  window.location.href = `/profile.html?uid=${encodeURIComponent(ownerId)}`;
+}
+
+/** Toggle like: one like per user enforced by likes subcollection */
+async function toggleLike(blobId) {
+  if (!currentUser) {
+    alert("Sign in to like.");
+    return;
+  }
+  const likeRef = doc(db, `blobs/${blobId}/likes/${currentUser.uid}`);
+  const blobRef = doc(db, "blobs", blobId);
+
+  try {
+    await runTransaction(db, async (tx) => {
+      const likeSnap = await tx.get(likeRef);
+      const blobSnap = await tx.get(blobRef);
+      if (!blobSnap.exists()) throw new Error("Blob not found.");
+      const currentLikes = blobSnap.data().likes || 0;
+
+      if (likeSnap.exists()) {
+        // user already liked -> remove like
+        tx.delete(likeRef);
+        tx.update(blobRef, { likes: Math.max(0, currentLikes - 1) });
+      } else {
+        // add like
+        tx.set(likeRef, { uid: currentUser.uid, ts: serverTimestamp() });
+        tx.update(blobRef, { likes: currentLikes + 1 });
+      }
+    });
+  } catch (err) {
+    console.error("Like transaction failed", err);
+    alert("Could not update like. Try again.");
+  }
+}
+
+/** Fork a blob into current user's account (copies metadata + chunks) */
+async function forkBlob(sourceBlobId, sourceMeta) {
+  if (!currentUser) {
+    alert("Sign in to fork.");
+    return;
+  }
+  // fetch source metadata if not provided
+  let meta = sourceMeta;
+  if (!meta) {
+    const snap = await getDoc(doc(db, "blobs", sourceBlobId));
+    if (!snap.exists()) return alert("Source blob not found.");
+    meta = snap.data();
+  }
+
+  // permission: only fork public blobs or your own private blobs
+  if (meta.visibility !== "public" && meta.ownerId !== currentUser.uid) {
+    return alert("Cannot fork a private blob you don't own.");
+  }
+
+  // check quota
+  if (currentUserUsage + (meta.sizeBytes || 0) > MAX_USER_BYTES) {
+    return alert("Not enough quota to fork this blob.");
+  }
+
+  // create new blob metadata under current user
+  try {
+    const newBlobRef = doc(collection(db, "blobs"));
+    const now = new Date();
+
+    // Use transaction to create metadata and update user quota atomically
+    await runTransaction(db, async (tx) => {
+      const userRef = doc(db, "blobUsers", currentUser.uid);
+      const userSnap = await tx.get(userRef);
+      const currentTotal = userSnap.exists() ? (userSnap.data().totalBytesUsed || 0) : 0;
+      const newTotal = currentTotal + (meta.sizeBytes || 0);
+      if (newTotal > MAX_USER_BYTES) throw new Error("Quota exceeded during transaction.");
+
+      tx.set(newBlobRef, {
+        ownerId: currentUser.uid,
+        ownerName: currentUser.displayName || null,
+        title: meta.title + " (fork)",
+        fileName: meta.fileName,
+        sizeBytes: meta.sizeBytes,
+        mimeType: meta.mimeType || "application/octet-stream",
+        visibility: "private", // forks default to private; change if you prefer public
+        chunkCount: meta.chunkCount || 0,
+        createdAt: now,
+        lastAccessedAt: now,
+        status: "uploading",
+        likes: 0,
+        views: 0,
+        forkedFrom: sourceBlobId
+      });
+
+      tx.update(userRef, { totalBytesUsed: newTotal });
+    });
+
+    // copy chunks
+    const sourceChunksSnap = await getDocs(collection(db, `blobs/${sourceBlobId}/chunks`));
+    const chunks = [];
+    sourceChunksSnap.forEach(c => chunks.push({ id: c.id, data: c.data() }));
+    // sort by index
+    chunks.sort((a,b) => a.data.index - b.data.index);
+
+    // write chunks sequentially
+    for (let i = 0; i < chunks.length; i++) {
+      const c = chunks[i];
+      const destRef = doc(db, `blobs/${newBlobRef.id}/chunks/${i}`);
+      await setDoc(destRef, {
+        index: i,
+        dataBase64: c.data.dataBase64
+      });
+    }
+
+    // finalize metadata
+    await updateDoc(newBlobRef, { status: "active" });
+
+    alert("Fork complete. You can find it in your uploads.");
+  } catch (err) {
+    console.error("Fork failed", err);
+    alert("Fork failed: " + (err.message || "unknown error"));
+  }
+}
+
+/** Share: copy a shareable URL to clipboard */
+async function shareBlob(blobId) {
+  const url = `${window.location.origin}${window.location.pathname}?blobId=${encodeURIComponent(blobId)}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    alert("Share link copied to clipboard.");
+  } catch (err) {
+    // fallback: open prompt
+    prompt("Copy this link:", url);
+  }
+}
+
+/* -------------------------
+   Download / reassemble (unchanged)
+   ------------------------- */
 async function downloadBlob(blobId, meta) {
   if (meta.status === "deleted") {
     alert("This blob is deleted. Use Recover to download if available.");
@@ -405,6 +591,9 @@ async function recoverAndDownload(blobId) {
   URL.revokeObjectURL(url);
 }
 
+/* -------------------------
+   Delete blob and chunks (unchanged)
+   ------------------------- */
 async function deleteBlobAndChunks(blobId, meta) {
   const chunksSnap = await getDocs(collection(db, `blobs/${blobId}/chunks`));
   for (const c of chunksSnap.docs) {
@@ -416,6 +605,9 @@ async function deleteBlobAndChunks(blobId, meta) {
   }
 }
 
+/* -------------------------
+   Archive helper (unchanged)
+   ------------------------- */
 async function archiveInactiveBlobsForUser() {
   if (!currentUser) return alert("Sign in first.");
   const cutoff = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
@@ -435,3 +627,8 @@ async function archiveInactiveBlobsForUser() {
 }
 
 window.archiveInactiveBlobsForUser = archiveInactiveBlobsForUser;
+
+/* -------------------------
+   Utility imports used above
+   ------------------------- */
+import { getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
