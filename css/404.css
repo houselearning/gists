@@ -1,0 +1,93 @@
+/* 404 page styling consistent with HouseLearning theme */
+:root {
+  --nav-bg: #1b2a4a;
+  --accent: #ffcf4a;
+  --muted: #6b7280;
+  --card-bg: #fff;
+  --page-bg: #f5f7fb;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: var(--page-bg);
+  color: #111827;
+  -webkit-font-smoothing:antialiased;
+}
+
+.hl-nav {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0.6rem 1.25rem;
+  background: var(--nav-bg);
+  color: #fff;
+}
+.hl-nav a { color: #dfe7ff; text-decoration:none; margin-right:0.75rem; }
+.hl-logo { font-weight:700; margin-right:1rem; }
+
+.notfound-layout {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height: calc(100vh - 120px);
+  padding: 2rem;
+}
+
+.notfound-card {
+  display:flex;
+  gap:1.25rem;
+  align-items:center;
+  max-width:980px;
+  width:100%;
+  background: var(--card-bg);
+  border-radius:12px;
+  padding:1.25rem;
+  box-shadow: 0 8px 30px rgba(15,23,42,0.08);
+}
+
+.notfound-visual {
+  width:220px;
+  height:220px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:12px;
+  background: linear-gradient(135deg,#e6eefc,#f8fafc);
+  flex-shrink:0;
+}
+
+.blob-404 {
+  font-size:64px;
+  font-weight:800;
+  color:#1b2a4a;
+  letter-spacing:2px;
+}
+
+.notfound-content { flex:1; }
+.notfound-content h1 { margin:0 0 0.4rem; font-size:1.6rem; }
+.muted { color: var(--muted); }
+.small { font-size:0.85rem; }
+
+.notfound-actions { margin:0.9rem 0; display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap; }
+.hl-btn {
+  border:none;
+  border-radius:999px;
+  padding:0.45rem 0.9rem;
+  cursor:pointer;
+  font-size:0.95rem;
+}
+.hl-btn.primary { background: var(--accent); color:#1b2a4a; }
+.hl-btn.small { font-size:0.85rem; padding:0.35rem 0.7rem; }
+
+.notfound-suggest h3 { margin:0.6rem 0 0.3rem; font-size:1rem; }
+.notfound-suggest ul { margin:0; padding:0; list-style:none; display:flex; gap:0.8rem; flex-wrap:wrap; }
+.notfound-suggest a { color:#1b2a4a; text-decoration:none; border-bottom:1px dashed #e6eefc; padding-bottom:2px; }
+
+.hl-footer { border-top:1px solid #e5e7f0; padding:0.8rem 1.25rem; color:var(--muted); display:flex; gap:0.75rem; }
+@media (max-width:800px) {
+  .notfound-card { flex-direction:column; align-items:stretch; padding:1rem; }
+  .notfound-visual { width:100%; height:140px; }
+  .blob-404 { font-size:48px; }
+}
