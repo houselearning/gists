@@ -39,7 +39,7 @@ const db = getFirestore(app);
 
 const MAX_FILE_BYTES = 15 * 1024 * 1024;
 const MAX_USER_BYTES = 45 * 1024 * 1024;
-const CHUNK_SIZE = 256 * 1024; // 256 KB per chunk (base64 expands slightly)
+const CHUNK_SIZE = 256 * 1024; // 256 KB per chunk
 
 const signedInAsEl = document.getElementById("signedInAs");
 const signInBtn = document.getElementById("signInBtn");
@@ -132,15 +132,13 @@ uploadForm.addEventListener("submit", async (e) => {
     const arrayBuffer = await file.arrayBuffer();
     const uint8 = new Uint8Array(arrayBuffer);
 
-    // Convert to base64 in chunks to avoid huge strings in memory at once
     const totalBytes = uint8.length;
     const chunkCount = Math.ceil(totalBytes / CHUNK_SIZE);
 
-    // Create metadata doc first (so rules can check quota)
+    // Create metadata doc first (rules will validate quota)
     const blobMetaRef = doc(collection(db, "blobs"));
     const now = new Date();
 
-    // Prepare metadata doc (without chunks yet)
     await setDoc(blobMetaRef, {
       ownerId: currentUser.uid,
       ownerName: currentUser.displayName || null,
@@ -159,12 +157,10 @@ uploadForm.addEventListener("submit", async (e) => {
 
     uploadStatusEl.textContent = `Uploading ${chunkCount} chunks...`;
 
-    // Write chunks sequentially (could be parallel but sequential is safer for quota)
     for (let i = 0; i < chunkCount; i++) {
       const start = i * CHUNK_SIZE;
       const end = Math.min(start + CHUNK_SIZE, totalBytes);
       const slice = uint8.subarray(start, end);
-      // convert slice to base64
       const base64 = arrayBufferToBase64(slice.buffer);
       const chunkRef = doc(db, `blobs/${blobMetaRef.id}/chunks/${i}`);
       await setDoc(chunkRef, {
@@ -174,10 +170,8 @@ uploadForm.addEventListener("submit", async (e) => {
       uploadStatusEl.textContent = `Uploaded chunk ${i + 1}/${chunkCount}`;
     }
 
-    // Update metadata to active
     await updateDoc(blobMetaRef, { status: "active" });
 
-    // Update user quota
     await updateUserUsage(currentUser.uid, totalBytes);
 
     uploadStatusEl.textContent = "Upload complete!";
@@ -189,7 +183,6 @@ uploadForm.addEventListener("submit", async (e) => {
   }
 });
 
-// Helper: convert ArrayBuffer to base64 string
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -200,7 +193,6 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
-// Helper: base64 to Uint8Array
 function base64ToUint8Array(base64) {
   const binary = atob(base64);
   const len = binary.length;
@@ -211,9 +203,6 @@ function base64ToUint8Array(base64) {
   return bytes;
 }
 
-/* -------------------------
-   User doc & quota
-   ------------------------- */
 async function ensureUserDoc(uid) {
   const userRef = doc(db, "blobUsers", uid);
   const snap = await getDoc(userRef);
@@ -244,9 +233,6 @@ function updateQuotaInfo() {
   quotaInfoEl.textContent = `You are using ${usedMB}MB of ${maxMB}MB.`;
 }
 
-/* -------------------------
-   Feed & subscriptions
-   ------------------------- */
 function subscribeMyUploads(uid) {
   const q = query(
     collection(db, "blobs"),
@@ -353,20 +339,15 @@ function subscribeFeed() {
   });
 }
 
-/* -------------------------
-   Download / reassemble
-   ------------------------- */
 async function downloadBlob(blobId, meta) {
   if (meta.status === "deleted") {
     alert("This blob is deleted. Use Recover to download if available.");
     return;
   }
-  // fetch chunks
   const chunksSnap = await getDocs(collection(db, `blobs/${blobId}/chunks`));
   const chunks = [];
   chunksSnap.forEach(c => chunks.push({ index: c.data().index, dataBase64: c.data().dataBase64 }));
   chunks.sort((a,b) => a.index - b.index);
-  // assemble
   const byteArrays = chunks.map(c => base64ToUint8Array(c.dataBase64));
   const totalLen = byteArrays.reduce((s, arr) => s + arr.length, 0);
   const combined = new Uint8Array(totalLen);
@@ -375,7 +356,6 @@ async function downloadBlob(blobId, meta) {
     combined.set(arr, offset);
     offset += arr.length;
   }
-  // create blob and download
   const blob = new Blob([combined], { type: meta.mimeType || "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -386,23 +366,19 @@ async function downloadBlob(blobId, meta) {
   a.remove();
   URL.revokeObjectURL(url);
 
-  // update lastAccessedAt and views
   const metaRef = doc(db, "blobs", blobId);
   await updateDoc(metaRef, { lastAccessedAt: new Date(), views: (meta.views || 0) + 1 });
 }
 
 async function recoverAndDownload(blobId) {
-  // For deleted blobs, if chunks still exist (e.g., you archived instead of deleting), reassemble
   const metaSnap = await getDoc(doc(db, "blobs", blobId));
   if (!metaSnap.exists()) return alert("Blob not found.");
   const meta = metaSnap.data();
   if (meta.status !== "deleted") return alert("Blob is not deleted.");
-  // Try to fetch chunks (if you archived them to deletedChunks or left them, adjust path)
   const chunksSnap = await getDocs(collection(db, `blobs/${blobId}/chunks`));
   if (chunksSnap.empty) {
     return alert("No recovery data available. The file was permanently removed.");
   }
-  // assemble and download
   const chunks = [];
   chunksSnap.forEach(c => chunks.push({ index: c.data().index, dataBase64: c.data().dataBase64 }));
   chunks.sort((a,b) => a.index - b.index);
@@ -425,26 +401,17 @@ async function recoverAndDownload(blobId) {
   URL.revokeObjectURL(url);
 }
 
-/* -------------------------
-   Delete blob and chunks (owner)
-   ------------------------- */
 async function deleteBlobAndChunks(blobId, meta) {
-  // Delete chunk docs
   const chunksSnap = await getDocs(collection(db, `blobs/${blobId}/chunks`));
   for (const c of chunksSnap.docs) {
     await deleteDoc(c.ref);
   }
-  // Delete metadata doc
   await deleteDoc(doc(db, "blobs", blobId));
-  // Decrement user quota
   if (meta.ownerId && meta.sizeBytes) {
     await updateUserUsage(meta.ownerId, -Math.abs(meta.sizeBytes));
   }
 }
 
-/* -------------------------
-   Client-side archive/cleanup (user-run)
-   ------------------------- */
 async function archiveInactiveBlobsForUser() {
   if (!currentUser) return alert("Sign in first.");
   const cutoff = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
@@ -455,23 +422,12 @@ async function archiveInactiveBlobsForUser() {
     if (!b.lastAccessedAt) continue;
     const last = b.lastAccessedAt.toDate ? b.lastAccessedAt.toDate() : new Date(b.lastAccessedAt);
     if (last > cutoff) continue;
-    // Mark as deleted but keep chunks for recovery (or delete them to free space)
     await updateDoc(doc(db, "blobs", docSnap.id), {
       status: "deleted",
       deletedAt: serverTimestamp()
     });
-    // Optionally: move chunks to deletedChunks collection (not implemented here)
-    // Optionally: keep chunks for a grace period, then delete them permanently
   }
   alert("Archive pass complete. Marked inactive blobs as deleted (chunks still present).");
 }
 
-/* -------------------------
-   Expose archive function to console for manual runs
-   ------------------------- */
 window.archiveInactiveBlobsForUser = archiveInactiveBlobsForUser;
-
-/* -------------------------
-   Utility: getDocs import
-   ------------------------- */
-import { getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
