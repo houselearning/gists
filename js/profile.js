@@ -26,15 +26,11 @@ import {
   runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* CONFIG: replace with your Firebase config */
+/* CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyDoXSwni65CuY1_32ZE8B1nwfQO_3VNpTw",
   authDomain: "contract-center-llc-10.firebaseapp.com",
   projectId: "contract-center-llc-10",
-  storageBucket: "contract-center-llc-10.firebasestorage.app",
-  messagingSenderId: "323221512767",
-  appId: "1:323221512767:web:6421260f875997dbf64e8a",
-  measurementId: "G-S2RJ0C6BWH"
 };
 /* END CONFIG */
 
@@ -91,7 +87,6 @@ onAuthStateChanged(auth, async (user) => {
     signOutBtn.classList.remove("hidden");
     followBtn.disabled = false;
   }
-  // refresh follow state if viewing a profile
   if (viewedUid) await loadFollowState();
 });
 
@@ -99,11 +94,9 @@ onAuthStateChanged(auth, async (user) => {
 (async function init() {
   viewedUid = qsParam("uid") || null;
   if (!viewedUid) {
-    // if no uid, show current user's profile if signed in
     const user = auth.currentUser;
     if (user) viewedUid = user.uid;
     else {
-      // fallback: show message and stop
       profileName.textContent = "Profile not specified";
       aboutText.textContent = "Open a profile with ?uid=USER_ID or sign in to view your profile.";
       followBtn.style.display = "none";
@@ -127,20 +120,20 @@ async function renderProfile(uid) {
   followersCountEl.textContent = data?.followersCount || 0;
   ratingStarsEl.textContent = data?.rating || "0";
 
-  // follow button text
   if (auth.currentUser && auth.currentUser.uid === uid) {
     followBtn.textContent = "Edit Profile";
     followBtn.onclick = () => window.location.href = "/profile-edit.html";
   } else {
     followBtn.textContent = "Follow";
-    followBtn.onclick = async () => await toggleFollow(uid);
+    followBtn.onclick = async () => {
+      const newState = await toggleFollow(uid);
+      followBtn.textContent = newState ? "Unfollow" : "Follow";
+    };
   }
 
-  // report button
   reportBtn.onclick = () => {
     const reason = prompt("Report this profile. Briefly describe the issue:");
     if (!reason) return;
-    // store a report doc (admins can review)
     addDoc(collection(db, "profileReports"), {
       reportedUid: uid,
       reporterUid: auth.currentUser?.uid || null,
@@ -149,7 +142,6 @@ async function renderProfile(uid) {
     }).then(() => alert("Report submitted."));
   };
 
-  // share profile
   shareProfileBtn.onclick = async () => {
     const url = `${window.location.origin}${window.location.pathname}?uid=${encodeURIComponent(uid)}`;
     try {
@@ -160,7 +152,6 @@ async function renderProfile(uid) {
     }
   };
 
-  // load follow state
   await loadFollowState();
 }
 
@@ -186,7 +177,6 @@ function updateFollowUI() {
   followBtn.textContent = isFollowing ? "Unfollow" : "Follow";
 }
 
-// Toggle follow/unfollow with safe updates
 async function toggleFollow(targetUid) {
   if (!currentUser) return alert("Sign in to follow users.");
   if (currentUser.uid === targetUid) return;
@@ -196,30 +186,29 @@ async function toggleFollow(targetUid) {
   const profileRef = doc(db, "user_profiles", targetUid);
 
   try {
-    await runTransaction(db, async (tx) => {
+    const result = await runTransaction(db, async (tx) => {
       const profileSnap = await tx.get(profileRef);
       const currentFollowers = profileSnap.exists() ? (profileSnap.data().followersCount || 0) : 0;
 
       const followerSnap = await tx.get(followerRef);
       if (followerSnap.exists()) {
-        // unfollow
         tx.delete(followerRef);
-        // remove following entry
         tx.delete(followingRef);
         tx.update(profileRef, { followersCount: Math.max(0, currentFollowers - 1) });
         isFollowing = false;
+        return false;
       } else {
-        // follow
         tx.set(followerRef, { uid: currentUser.uid, ts: serverTimestamp() });
         tx.set(followingRef, { uid: targetUid, ts: serverTimestamp() });
         tx.update(profileRef, { followersCount: currentFollowers + 1 });
         isFollowing = true;
+        return true;
       }
     });
-    updateFollowUI();
-    // update displayed followers count
-    const pSnap = await getDoc(doc(db, "user_profiles", targetUid));
-    followersCountEl.textContent = pSnap.exists() ? (pSnap.data().followersCount || 0) : 0;
+
+    followersCountEl.textContent = (await getDoc(profileRef)).data().followersCount || 0;
+    return result;
+
   } catch (err) {
     console.error("Follow transaction failed", err);
     alert("Could not update follow status. Try again.");
@@ -227,7 +216,7 @@ async function toggleFollow(targetUid) {
 }
 
 /* -------------------------
-   Uploads listing & actions
+   Uploads listing
    ------------------------- */
 
 function subscribeRecentUploads(uid) {
@@ -267,37 +256,28 @@ function subscribeUploads(uid) {
       uploadsListEl.appendChild(item);
 
       item.querySelector(".download-btn").addEventListener("click", async () => {
-        await downloadBlob(id, b);
+        if (window.downloadBlob) await window.downloadBlob(id, b);
       });
       item.querySelector(".fork-btn").addEventListener("click", async () => {
-        // reuse fork logic from blob page if available
-        if (window.forkBlob) {
-          await window.forkBlob(id, b);
-        } else {
-          alert("Fork not available here.");
-        }
+        if (window.forkBlob) await window.forkBlob(id, b);
       });
       item.querySelector(".like-btn").addEventListener("click", async () => {
         if (window.toggleLike) await window.toggleLike(id);
-        else alert("Like not available here.");
       });
       item.querySelector(".share-btn").addEventListener("click", async () => {
-        const url = `${window.location.origin}/blob.html?blobId=${encodeURIComponent(id)}`;
-        try { await navigator.clipboard.writeText(url); alert("Link copied."); }
-        catch { prompt("Copy link:", url); }
+        if (window.shareBlob) await window.shareBlob(id, b.fileName);
       });
     });
   });
 }
 
 /* -------------------------
-   Download helper (reuses chunk logic if present)
+   Download helper
    ------------------------- */
+
 async function downloadBlob(blobId, meta) {
-  // If blob page code is loaded, prefer its download function
   if (window.downloadBlob) return window.downloadBlob(blobId, meta);
 
-  // Otherwise implement a minimal fetch of chunks here
   try {
     const chunksSnap = await getDocs(collection(db, `blobs/${blobId}/chunks`));
     const chunks = [];
@@ -333,8 +313,5 @@ function base64ToUint8Array(base64) {
   for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
-
-/* -------------------------
-   Utility imports used above
-   ------------------------- */
+// holding this off temporarily
 //import { getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
