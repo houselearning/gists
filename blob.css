@@ -1,0 +1,243 @@
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f5f7fb;
+  color: #222;
+}
+
+.hl-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 1.5rem;
+  background: #1b2a4a;
+  color: #fff;
+}
+
+.hl-nav a,
+.hl-nav span {
+  color: #dfe7ff;
+  text-decoration: none;
+  margin-right: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.hl-logo {
+  font-weight: 700;
+  margin-right: 1.5rem;
+}
+
+.hl-nav-current {
+  font-weight: 600;
+  border-bottom: 2px solid #ffcf4a;
+}
+
+.hl-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.hl-btn.primary {
+  background: #ffcf4a;
+  color: #1b2a4a;
+}
+
+.hl-btn.secondary {
+  background: transparent;
+  color: #dfe7ff;
+  border: 1px solid #dfe7ff55;
+}
+
+.hl-btn.small {
+  font-size: 0.8rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.blob-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1.25rem;
+  padding: 1.25rem 1.5rem 2.5rem;
+}
+
+.card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  padding: 1rem 1.1rem;
+}
+
+.blob-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.blob-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.05rem;
+}
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.file-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #e5e7f0;
+}
+
+.file-list li:last-child {
+  border-bottom: none;
+}
+
+.file-name {
+  font-weight: 500;
+}
+
+.file-meta {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.feed-item {
+  border-radius: 8px;
+  border: 1px solid #e5e7f0;
+  padding: 0.7rem 0.8rem;
+  background: #f9fafb;
+}
+
+.feed-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.feed-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #c7d2fe;
+}
+
+.feed-user {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.feed-meta {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.feed-preview {
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid #e5e7f0;
+  padding: 0.5rem 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.feed-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.feed-actions button {
+  border-radius: 999px;
+  border: 1px solid #e5e7f0;
+  background: #f3f4ff;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+}
+
+.feed-snippet {
+  font-size: 0.8rem;
+  color: #4b5563;
+  max-height: 3.5rem;
+  overflow: hidden;
+}
+
+.upload-card .field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.upload-card .field span {
+  margin-bottom: 0.2rem;
+  color: #4b5563;
+}
+
+.upload-card input[type="text"],
+.upload-card select,
+.upload-card input[type="file"] {
+  font-size: 0.9rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+}
+
+.upload-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin: 0.3rem 0 0.6rem;
+}
+
+.muted {
+  color: #6b7280;
+}
+
+.status {
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+}
+
+.hl-footer {
+  border-top: 1px solid #e5e7f0;
+  padding: 0.8rem 1.5rem;
+  font-size: 0.8rem;
+  display: flex;
+  gap: 0.75rem;
+  color: #6b7280;
+}
+
+.hl-footer a {
+  color: #4b5563;
+  text-decoration: none;
+}
+
+@media (max-width: 900px) {
+  .blob-layout {
+    grid-template-columns: 1fr;
+  }
+}
