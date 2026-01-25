@@ -298,8 +298,9 @@ function subscribeMyUploads(uid) {
         await toggleLike(docSnap.id);
       });
       li.querySelector(".share-btn").addEventListener("click", async () => {
-        await shareBlob(docSnap.id);
-      });
+  await shareBlob(docSnap.id, b.fileName);
+});
+
     });
   });
 }
@@ -380,8 +381,9 @@ function subscribeFeed() {
           } else if (action === "like") {
             await toggleLike(ev.target.dataset.id);
           } else if (action === "share") {
-            await shareBlob(ev.target.dataset.id);
-          }
+  await shareBlob(ev.target.dataset.id, b.fileName);
+}
+
         });
       });
 
@@ -632,6 +634,30 @@ async function archiveInactiveBlobsForUser() {
 }
 
 window.archiveInactiveBlobsForUser = archiveInactiveBlobsForUser;
+shareClose.addEventListener("click", () => {
+  shareModal.classList.add("hidden");
+});
+
+shareMail.addEventListener("click", () => {
+  const link = `${window.location.origin}/blob.html?blobId=${shareCurrentBlobId}`;
+  const subject = encodeURIComponent("Check out this file!");
+  const body = encodeURIComponent(
+    `Hey there! I want to share a file with you!\n\n${shareCurrentFileName}\n${link}`
+  );
+
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+});
+
+shareCopy.addEventListener("click", async () => {
+  const link = `${window.location.origin}/blob.html?blobId=${shareCurrentBlobId}`;
+  await navigator.clipboard.writeText(link);
+  alert("Link copied to clipboard!");
+});
+
+shareForum.addEventListener("click", () => {
+  const link = `${window.location.origin}/blob.html?blobId=${shareCurrentBlobId}`;
+  window.location.href = `/docs/forum.html?newpost=${encodeURIComponent(link)}`;
+});
 
 /* -------------------------
    Utility imports used above
