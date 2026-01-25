@@ -1,0 +1,31 @@
+name: Cleanup inactive blobs
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Write service account
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
+        run: |
+          echo "$SA_JSON" > /tmp/firebase-sa.json
+
+      - name: Run cleanup
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-sa.json
+        run: |
+          node scripts/cleanup-firestore-chunks.js
