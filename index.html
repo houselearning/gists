@@ -1,7 +1,124 @@
-<HTML>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>HouseLearning Gists</title>
-  <BODY>
-<meta http-equiv="refresh" content="0; url=blob.html">
-<p>You are being redirected to <i>blob.html</i> <a href=".github/302-why.html">Why?</a></p>
-  </BODY>
-</HTML>
+  <script src="https://houselearning.org/cookiebanner.js"></script>
+  <script src="https://houselearning.org/feedback.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f5f7fb;
+      color: #1b1f29;
+    }
+    header {
+      background: #1b2a4a;
+      padding: 1rem 2rem;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header a {
+      color: #dfe7ff;
+      text-decoration: none;
+      margin-left: 1rem;
+    }
+    .hero {
+      text-align: center;
+      padding: 4rem 1rem;
+    }
+    .hero h1 {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+    }
+    .hero p {
+      font-size: 1.2rem;
+      color: #6b7280;
+      max-width: 600px;
+      margin: 0 auto 2rem;
+    }
+    .hero a {
+      background: #ffcf4a;
+      padding: 0.8rem 1.6rem;
+      border-radius: 8px;
+      color: #1b2a4a;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .features {
+      max-width: 900px;
+      margin: 3rem auto;
+      padding: 0 1rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+    }
+    .card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    .card h3 {
+      margin-top: 0;
+    }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">HouseLearning Gists</div>
+  <nav>
+    <a href="/blob.html">Upload</a>
+    <a href="/profile.html">Profile</a>
+    <a href="https://houselearning.org">Main Site</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <h1>Share Your Ideas. Instantly.</h1>
+  <p>
+    HouseLearning Gists is a free, serverless file‑sharing platform built for students, developers, and creators.
+    Upload, share, fork, and explore — all powered by Firestore, with zero hosting costs.
+  </p>
+  <a href="/blob.html">Start Uploading</a>
+</section>
+
+<section class="features">
+  <div class="card">
+    <h3>⚡ Fast Uploads</h3>
+    <p>Upload files up to 15MB with chunked Firestore storage. No backend required.</p>
+  </div>
+  <div class="card">
+    <h3>🔗 Easy Sharing</h3>
+    <p>Share via email, copy link, or post directly to the HouseLearning Forum.</p>
+  </div>
+  <div class="card">
+    <h3>❤️ Likes & Follows</h3>
+    <p>Like gists, follow creators, and build your presence in the community.</p>
+  </div>
+  <div class="card">
+    <h3>🌍 Public or Private</h3>
+    <p>Choose visibility for each upload. Public gists appear in Trending and Feed.</p>
+  </div>
+  <div class="card">
+    <h3>🔁 Fork Anything</h3>
+    <p>Fork public gists into your own workspace and build on top of others’ ideas.</p>
+  </div>
+  <div class="card">
+    <h3>🧠 Zero Hosting Costs</h3>
+    <p>Runs entirely on Firestore’s free tier. Perfect for student and hobby projects.</p>
+  </div>
+</section>
+
+
+</body>
+</html>
