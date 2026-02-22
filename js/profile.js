@@ -11,8 +11,6 @@ import {
   getFirestore,
   doc,
   getDoc,
-  setDoc,
-  updateDoc,
   collection,
   query,
   where,
@@ -20,7 +18,6 @@ import {
   limit,
   onSnapshot,
   addDoc,
-  deleteDoc,
   serverTimestamp,
   getDocs,
   runTransaction
