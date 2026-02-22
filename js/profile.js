@@ -306,6 +306,9 @@ async function downloadBlob(blobId, meta) {
   }
 }
 
+// Expose download helper for external callers (e.g., from HTML or other scripts)
+window.downloadBlob = downloadBlob;
+
 function base64ToUint8Array(base64) {
   const binary = atob(base64);
   const len = binary.length;
