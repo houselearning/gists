@@ -36,6 +36,12 @@
     </aside>
 
     <section class="blob-main">
+      <section id="moderationCard" class="card hidden" aria-labelledby="moderationTitle">
+        <h2 id="moderationTitle">Public Gists awaiting review</h2>
+        <p id="moderationStatus" class="muted" role="status" aria-live="polite"></p>
+        <div id="moderationQueue" class="feed-list"></div>
+      </section>
+
       <section class="card upload-card">
         <h2>Upload to HouseLearning Blob</h2>
         <p class="muted">Max <strong>15MB per file</strong>, up to <strong>45MB total</strong> per account.</p>

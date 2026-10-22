@@ -4,9 +4,12 @@
   "description": "Cleanup script for HouseLearning Blob (Firestore chunk deletion)",
   "main": "scripts/cleanup-firestore-chunks.js",
   "scripts": {
-    "cleanup": "node scripts/cleanup-firestore-chunks.js"
+    "cleanup": "node scripts/cleanup-firestore-chunks.js",
+    "moderate:legacy": "node scripts/queue-legacy-public-moderation.js",
+    "test": "node --test",
+    "check": "node --check js/blob-firestore.js && node --check js/profile.js && node --check scripts/cleanup-firestore-chunks.js && node --check scripts/queue-legacy-public-moderation.js"
   },
   "dependencies": {
-    "firebase-admin": "^11.0.0"
+    "firebase-admin": "^14.5.0"
   }
 }

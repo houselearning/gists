@@ -1,16 +1,17 @@
 // scripts/cleanup-firestore-chunks.js
-const admin = require("firebase-admin");
+const { applicationDefault, initializeApp } = require("firebase-admin/app");
+const { FieldValue, getFirestore } = require("firebase-admin/firestore");
 
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   console.error("Set GOOGLE_APPLICATION_CREDENTIALS to service account JSON path.");
   process.exit(1);
 }
 
-admin.initializeApp({
-  credential: admin.credential.applicationDefault()
+initializeApp({
+  credential: applicationDefault()
 });
 
-const db = admin.firestore();
+const db = getFirestore();
 
 async function cleanup() {
   const cutoff = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
@@ -29,14 +30,14 @@ async function cleanup() {
     // Update metadata
     await doc.ref.update({
       status: "deleted",
-      deletedAt: admin.firestore.FieldValue.serverTimestamp()
+      deletedAt: FieldValue.serverTimestamp()
     });
 
     // Decrement user quota
     if (data.ownerId && data.sizeBytes) {
       const userRef = db.collection("blobUsers").doc(data.ownerId);
       await userRef.update({
-        totalBytesUsed: admin.firestore.FieldValue.increment(-Math.abs(data.sizeBytes))
+        totalBytesUsed: FieldValue.increment(-Math.abs(data.sizeBytes))
       });
     }
 

@@ -22,6 +22,7 @@ import {
   getDocs,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { escapeHtml, moderationLabel } from "./blob-ui-utils.mjs";
 
 /* CONFIG */
 const firebaseConfig = {
@@ -53,6 +54,8 @@ const shareProfileBtn = document.getElementById("shareProfileBtn");
 let currentUser = null;
 let viewedUid = null;
 let isFollowing = false;
+let resolveAuthReady;
+const authReady = new Promise(resolve => { resolveAuthReady = resolve; });
 
 // Helpers
 function qsParam(name) {
@@ -61,7 +64,7 @@ function qsParam(name) {
 }
 
 function avatarUrl(uid) {
-  return `https://robohash.org/${uid}.png?size=160x160&set=set3`;
+  return `https://robohash.org/${encodeURIComponent(uid)}.png?size=160x160&set=set3`;
 }
 
 // Auth UI
@@ -73,6 +76,7 @@ signOutBtn.addEventListener("click", () => signOut(auth));
 
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
+  resolveAuthReady();
   if (!user) {
     signedInAsEl.textContent = "Guest";
     signInBtn.classList.remove("hidden");
@@ -101,6 +105,7 @@ onAuthStateChanged(auth, async (user) => {
     }
   }
   await renderProfile(viewedUid);
+  await authReady;
   subscribeUploads(viewedUid);
   subscribeRecentUploads(viewedUid);
 })();
@@ -217,37 +222,56 @@ async function toggleFollow(targetUid) {
    ------------------------- */
 
 function subscribeRecentUploads(uid) {
-  const q = query(collection(db, "blobs"), where("ownerId", "==", uid), orderBy("createdAt", "desc"), limit(5));
+  const constraints = [where("ownerId", "==", uid)];
+  if (currentUser?.uid !== uid) {
+    constraints.push(where("visibility", "==", "public"));
+    constraints.push(where("moderationStatus", "==", "approved"));
+  }
+  constraints.push(orderBy("createdAt", "desc"), limit(5));
+  const q = query(collection(db, "blobs"), ...constraints);
   onSnapshot(q, (snap) => {
     recentUploadsEl.innerHTML = "";
     snap.forEach(docSnap => {
       const b = docSnap.data();
       const li = document.createElement("li");
-      li.innerHTML = `<span class="file-name">${b.fileName}</span><span class="file-meta">${b.visibility === "public" ? "publ" : "priv"}</span>`;
+      const status = currentUser?.uid === uid
+        ? (b.visibility === "public" ? moderationLabel(b.moderationStatus) : "Private")
+        : "Public";
+      li.innerHTML = `<span class="file-name">${escapeHtml(b.fileName)}</span><span class="file-meta">${escapeHtml(status)}</span>`;
       recentUploadsEl.appendChild(li);
     });
   });
 }
 
 function subscribeUploads(uid) {
-  const q = query(collection(db, "blobs"), where("ownerId", "==", uid), orderBy("createdAt", "desc"), limit(50));
+  const constraints = [where("ownerId", "==", uid)];
+  if (currentUser?.uid !== uid) {
+    constraints.push(where("visibility", "==", "public"));
+    constraints.push(where("moderationStatus", "==", "approved"));
+  }
+  constraints.push(orderBy("createdAt", "desc"), limit(50));
+  const q = query(collection(db, "blobs"), ...constraints);
   onSnapshot(q, (snap) => {
     uploadsListEl.innerHTML = "";
     snap.forEach(docSnap => {
       const id = docSnap.id;
       const b = docSnap.data();
+      const moderation = currentUser?.uid === uid
+        ? (b.visibility === "public" ? moderationLabel(b.moderationStatus) : "Private")
+        : "Public";
       const item = document.createElement("div");
       item.className = "feed-item";
       item.innerHTML = `
         <div>
-          <div style="font-weight:600">${b.title || b.fileName}</div>
-          <div class="feed-meta">${b.fileName} • ${b.sizeBytes ? Math.round(b.sizeBytes/1024) + " KB" : ""}</div>
+          <div style="font-weight:600">${escapeHtml(b.title || b.fileName)}</div>
+          <div class="feed-meta">${escapeHtml(b.fileName)} • ${b.sizeBytes ? Math.round(b.sizeBytes/1024) + " KB" : ""}</div>
+          <div class="feed-meta">${escapeHtml(moderation)}</div>
         </div>
         <div style="display:flex;gap:0.4rem;align-items:center">
-          <button data-id="${id}" class="download-btn hl-btn">Download</button>
-          <button data-id="${id}" class="fork-btn hl-btn">Fork</button>
-          <button data-id="${id}" class="like-btn hl-btn">Like (${b.likes||0})</button>
-          <button data-id="${id}" class="share-btn hl-btn">Share</button>
+          <button data-id="${escapeHtml(id)}" class="download-btn hl-btn">Download</button>
+          <button data-id="${escapeHtml(id)}" class="fork-btn hl-btn">Fork</button>
+          <button data-id="${escapeHtml(id)}" class="like-btn hl-btn">Like (${Number.isFinite(b.likes) ? Math.max(0, b.likes) : 0})</button>
+          <button data-id="${escapeHtml(id)}" class="share-btn hl-btn">Share</button>
         </div>
       `;
       uploadsListEl.appendChild(item);

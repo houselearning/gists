@@ -31,6 +31,7 @@ import {
   deleteDoc,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { escapeHtml, moderationLabel } from "./blob-ui-utils.mjs";
 
 /* ============================
    CONFIG: replace with your Firebase config
@@ -76,6 +77,10 @@ let currentUser = null;
 let currentUserUsage = 0;
 let shareCurrentBlobId = null;
 let shareCurrentFileName = null;
+let isModerator = false;
+const moderationCard = document.getElementById('moderationCard');
+const moderationStatus = document.getElementById('moderationStatus');
+const moderationQueue = document.getElementById('moderationQueue');
 
 /* ============================
    AUTH
@@ -92,6 +97,8 @@ onAuthStateChanged(auth, async (user) => {
   currentUser = user;
 
   if (!user) {
+    isModerator = false;
+    moderationCard?.classList.add('hidden');
     if (signedInAsEl) signedInAsEl.textContent = "Guest";
     signInBtn?.classList.remove("hidden");
     signOutBtn?.classList.add("hidden");
@@ -106,6 +113,14 @@ onAuthStateChanged(auth, async (user) => {
   if (signedInAsEl) {
     signedInAsEl.textContent = user.displayName || user.email || "User";
   }
+  try {
+    const token = await user.getIdTokenResult();
+    isModerator = token.claims.admin === true
+      || user.email === 'cajm23331@gmail.com'
+      || user.uid === '2nuzhsYAXiaMhm4RhRWksNLIBcJ3';
+  } catch (_error) {
+    isModerator = false;
+  }
   signInBtn?.classList.add("hidden");
   signOutBtn?.classList.remove("hidden");
   uploadForm?.classList.remove("hidden");
@@ -114,6 +129,12 @@ onAuthStateChanged(auth, async (user) => {
   subscribeMyUploads(user.uid);
   subscribeTrending();
   subscribeFeed();
+  if (isModerator) {
+    moderationCard?.classList.remove('hidden');
+    subscribeModerationQueue();
+  } else {
+    moderationCard?.classList.add('hidden');
+  }
 });
 
 /* ============================
@@ -184,6 +205,7 @@ uploadForm?.addEventListener("submit", async (e) => {
       createdAt: now,
       lastAccessedAt: now,
       status: "uploading",
+      moderationStatus: visibility === "public" ? "pending" : "not-required",
       likes: 0,
       views: 0
     });
@@ -214,6 +236,79 @@ uploadForm?.addEventListener("submit", async (e) => {
     if (uploadStatusEl) uploadStatusEl.textContent = "Upload failed.";
   }
 });
+
+function subscribeModerationQueue() {
+  if (!moderationQueue) return;
+  const pendingQuery = query(
+    collection(db, 'blobs'),
+    where('visibility', '==', 'public'),
+    where('moderationStatus', 'in', ['pending', 'review']),
+    limit(50)
+  );
+  onSnapshot(pendingQuery, snapshot => {
+    moderationQueue.replaceChildren();
+    moderationStatus.textContent = snapshot.size
+      ? `${snapshot.size} public uploads need human review.`
+      : 'No public uploads are waiting for review.';
+
+    snapshot.forEach(documentSnapshot => {
+      const blob = documentSnapshot.data();
+      if (blob.status !== 'active') return;
+      const item = document.createElement('article');
+      item.className = 'feed-item';
+      const title = document.createElement('strong');
+      title.textContent = blob.title || blob.fileName || 'Untitled upload';
+      const details = document.createElement('p');
+      details.className = 'muted';
+      details.textContent = `${blob.fileName || 'Unknown file'} · ${blob.mimeType || 'Unknown type'} · ${blob.moderationStatus}`;
+      const actions = document.createElement('div');
+      actions.className = 'feed-actions';
+      const download = document.createElement('button');
+      download.type = 'button';
+      download.textContent = 'Download for review';
+      download.addEventListener('click', () => downloadBlob(documentSnapshot.id, blob));
+      const category = document.createElement('select');
+      category.setAttribute('aria-label', 'Reason for blocking this upload');
+      for (const [value, label] of [
+        ['sexual-content', 'Sexual content'],
+        ['hate-or-harassment', 'Hate or harassment'],
+        ['dangerous-instructions', 'Dangerous instructions'],
+        ['malicious-code', 'Malicious code']
+      ]) category.add(new Option(label, value));
+      const approve = document.createElement('button');
+      approve.type = 'button';
+      approve.textContent = 'Approve';
+      approve.addEventListener('click', () => saveModerationDecision(documentSnapshot.id, 'approved', 'safe'));
+      const block = document.createElement('button');
+      block.type = 'button';
+      block.textContent = 'Block';
+      block.addEventListener('click', () => saveModerationDecision(documentSnapshot.id, 'blocked', category.value));
+      actions.append(download, category, approve, block);
+      item.append(title, details, actions);
+      moderationQueue.appendChild(item);
+    });
+  }, error => {
+    moderationStatus.textContent = 'Moderation queue unavailable. Check deployed Firestore rules and indexes.';
+    console.error('Unable to load Gists moderation queue:', error);
+  });
+}
+
+async function saveModerationDecision(blobId, decision, category) {
+  if (!isModerator || !currentUser) return;
+  moderationStatus.textContent = 'Saving moderation decision...';
+  try {
+    await updateDoc(doc(db, 'blobs', blobId), {
+      moderationStatus: decision,
+      moderationCategory: category,
+      moderationReviewedBy: currentUser.uid,
+      moderationReviewedAt: serverTimestamp()
+    });
+    moderationStatus.textContent = 'Decision saved.';
+  } catch (error) {
+    moderationStatus.textContent = 'Decision was not saved; the upload remains hidden.';
+    console.error('Unable to save Gists moderation decision:', error);
+  }
+}
 
 /* ============================
    UTILS: base64 <-> Uint8Array
@@ -291,18 +386,21 @@ function subscribeMyUploads(uid) {
     snap.forEach((docSnap) => {
       const b = docSnap.data();
       const li = document.createElement("li");
+      const safeId = escapeHtml(docSnap.id);
+      const safeOwnerId = escapeHtml(b.ownerId);
       const visLabel = b.status === "deleted"
         ? "deleted"
         : (b.visibility === "public" ? "publ" : "priv");
       li.innerHTML = `
-        <span class="file-name">${b.fileName}</span>
+        <span class="file-name">${escapeHtml(b.fileName)}</span>
         <span class="file-meta">${visLabel}</span>
-        <button data-id="${docSnap.id}" class="download-btn">Download</button>
-        <button data-id="${docSnap.id}" class="delete-btn">Delete</button>
-        <button data-owner="${b.ownerId}" data-action="profile" class="action-btn">View profile</button>
-        <button data-id="${docSnap.id}" class="fork-btn">Fork</button>
-        <button data-id="${docSnap.id}" class="like-btn">Like (${b.likes || 0})</button>
-        <button data-id="${docSnap.id}" class="share-btn">Share</button>
+        <span class="file-meta">${escapeHtml(moderationLabel(b.moderationStatus))}</span>
+        <button data-id="${safeId}" class="download-btn">Download</button>
+        <button data-id="${safeId}" class="delete-btn">Delete</button>
+        <button data-owner="${safeOwnerId}" data-action="profile" class="action-btn">View profile</button>
+        <button data-id="${safeId}" class="fork-btn">Fork</button>
+        <button data-id="${safeId}" class="like-btn">Like (${Number.isFinite(b.likes) ? Math.max(0, b.likes) : 0})</button>
+        <button data-id="${safeId}" class="share-btn">Share</button>
       `;
       myUploadsList.appendChild(li);
 
@@ -335,6 +433,7 @@ function subscribeTrending() {
   const q = query(
     collection(db, "blobs"),
     where("visibility", "==", "public"),
+    where("moderationStatus", "==", "approved"),
     orderBy("views", "desc"),
     limit(5)
   );
@@ -343,12 +442,14 @@ function subscribeTrending() {
     snap.forEach((docSnap) => {
       const b = docSnap.data();
       const li = document.createElement("li");
+      const safeId = escapeHtml(docSnap.id);
+      const safeOwnerId = escapeHtml(b.ownerId);
       li.innerHTML = `
-        <span class="file-name">${b.fileName}</span>
-        <span class="file-meta">${b.views || 0} Views</span>
-        <button data-owner="${b.ownerId}" class="view-profile-small">Profile</button>
-        <button data-id="${docSnap.id}" class="fork-small">Fork</button>
-        <button data-id="${docSnap.id}" class="share-small">Share</button>
+        <span class="file-name">${escapeHtml(b.fileName)}</span>
+        <span class="file-meta">${Number.isFinite(b.views) ? Math.max(0, b.views) : 0} Views</span>
+        <button data-owner="${safeOwnerId}" class="view-profile-small">Profile</button>
+        <button data-id="${safeId}" class="fork-small">Fork</button>
+        <button data-id="${safeId}" class="share-small">Share</button>
       `;
       trendingList.appendChild(li);
 
@@ -370,6 +471,7 @@ function subscribeFeed() {
   const q = query(
     collection(db, "blobs"),
     where("visibility", "==", "public"),
+    where("moderationStatus", "==", "approved"),
     orderBy("createdAt", "desc"),
     limit(20)
   );
@@ -378,29 +480,32 @@ function subscribeFeed() {
     snap.forEach((docSnap) => {
       const id = docSnap.id;
       const b = docSnap.data();
+      const safeId = escapeHtml(id);
       const item = document.createElement("div");
       item.className = "feed-item";
 
       const snippet = b.status === "deleted"
         ? `<strong>This Project has been deleted due to inactivity,</strong>
-           <a href="#" data-id="${id}" class="recover-link">Recover &amp; Download</a>`
-        : (b.previewText || "Preview not available.");
+           <a href="#" data-id="${safeId}" class="recover-link">Recover &amp; Download</a>`
+        : escapeHtml(b.previewText || "Preview not available.");
+      const safeOwnerId = escapeHtml(b.ownerId);
+      const avatarUrl = `https://robohash.org/${encodeURIComponent(b.ownerId || '')}.png?size=80x80&set=set3`;
 
       item.innerHTML = `
         <div class="feed-header">
-          <div class="feed-avatar" style="background-image:url('https://robohash.org/${b.ownerId}.png?size=80x80&set=set3');background-size:cover;"></div>
+          <div class="feed-avatar" style="background-image:url('${escapeHtml(avatarUrl)}');background-size:cover;"></div>
           <div>
-            <div class="feed-user">${b.ownerName || "Anonymous"}</div>
-            <div class="feed-meta">Uploaded - ${b.fileName}</div>
+            <div class="feed-user">${escapeHtml(b.ownerName || "Anonymous")}</div>
+            <div class="feed-meta">Uploaded - ${escapeHtml(b.fileName)}</div>
           </div>
         </div>
         <div class="feed-preview">
           <div class="feed-actions">
-            <button data-action="profile" data-owner="${b.ownerId}">view profile</button>
-            <button data-action="follow" data-owner="${b.ownerId}">Follow</button>
-            <button data-action="fork" data-id="${id}">Fork</button>
-            <button data-action="like" data-id="${id}">Like (${b.likes || 0})</button>
-            <button data-action="share" data-id="${id}">Share</button>
+            <button data-action="profile" data-owner="${safeOwnerId}">view profile</button>
+            <button data-action="follow" data-owner="${safeOwnerId}">Follow</button>
+            <button data-action="fork" data-id="${safeId}">Fork</button>
+            <button data-action="like" data-id="${safeId}">Like (${Number.isFinite(b.likes) ? Math.max(0, b.likes) : 0})</button>
+            <button data-action="share" data-id="${safeId}">Share</button>
           </div>
           <div class="feed-snippet">${snippet}</div>
         </div>
@@ -590,6 +695,7 @@ async function forkBlob(sourceBlobId, sourceMeta) {
         createdAt: now,
         lastAccessedAt: now,
         status: "uploading",
+        moderationStatus: "not-required",
         likes: 0,
         views: 0,
         forkedFrom: sourceBlobId
